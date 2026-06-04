@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interpreter - English ↔ Multiple Languages</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a5f7a;
+            --primary-light: #2a8fa3;
+            --accent: #e85d54;
+            --accent-light: #f07668;
+            --bg-dark: #0f1419;
+            --bg-card: #1a2332;
+            --text-primary: #e8eef2;
+            --text-secondary: #a8b5c5;
+            --border: #2a3847;
+            --success: #4fc3a1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2839 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .language-selector {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .language-selector label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .language-selector select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .speaker-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .speaker-label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .language-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .language-badge.spanish { background: var(--accent); }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .record-button {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--primary);
+            color: white;
+        }
+
+        .record-button:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(26, 95, 122, 0.3);
+        }
+
+        .record-button.recording {
+            background: var(--accent);
+            animation: pulse 1s infinite;
+        }
+
+        .record-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 84, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(232, 93, 84, 0); }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-badge.listening {
+            background: rgba(79, 195, 161, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.processing {
+            background: rgba(232, 93, 84, 0.15);
+            color: var(--accent);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .transcript-container {
+            grid-column: 1 / -1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .transcript-header {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .transcript-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .transcript-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .transcript-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .transcript-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .message {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.english {
+            background: rgba(26, 95, 122, 0.2);
+            border-left: 3px solid var(--primary);
+        }
+
+        .message.spanish {
+            background: rgba(232, 93, 84, 0.2);
+            border-left: 3px solid var(--accent);
+            margin-left: 20px;
+        }
+
+        .message-speaker {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+        }
+
+        .message-text {
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info-panel {
+            background: rgba(26, 95, 122, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .info-panel strong {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 AI Interpreter</h1>
+            <p>Two-way real-time conversation interpreter powered by Claude</p>
+            
+            <div class="language-selector">
+                <label>Select Language Pair:</label>
+                <select id="languageSelect" onchange="changeLanguagePair()">
+                    <option value="spanish">English ↔ Spanish</option>
+                    <option value="french">English ↔ French</option>
+                    <option value="german">English ↔ German</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="speaker-panel">
+                <div class="speaker-label">
+                    🇺🇸 English Speaker
+                    <span class="language-badge">English</span>
+                </div>
+                <div class="controls">
+                    <button class="record-button" id="englishBtn" onclick="toggleEnglish()">
+                        <span>🎤</span>
+                        <span id="englishLabel">Speak English</span>
+                    </button>
+                    <span class="status-badge" id="englishStatus" style="display: none;"></span>
+                </div>
+                <div class="info-panel">
+                    <strong>Instructions:</strong> Click to record your message in English. Release to stop recording.
+                </div>
+            </div>
+
+            <div class="speaker-panel">
+                <div class="speaker-label">
+                    <span id="foreignFlag">🇪🇸</span> <span id="foreignSpeaker">Spanish Speaker</span>
+                    <span class="language-badge spanish" id="foreignBadge">Spanish</span>
+                </div>
+                <div class="controls">
+                    <button class="record-button" id="foreignBtn" onclick="toggleForeign()">
+                        <span>🎤</span>
+                        <span id="foreignLabel">Speak Spanish</span>
+                    </button>
+                    <span class="status-badge" id="foreignStatus" style="display: none;"></span>
+                </div>
+                <div class="info-panel">
+                    <strong>Instructions:</strong> Click to record your message in <span id="foreignLangName">Spanish</span>. Release to stop recording.
+                </div>
+            </div>
+
+            <div class="transcript-container">
+                <div class="transcript-header">📜 Live Conversation Transcript</div>
+                <div class="transcript-list" id="transcriptList">
+                    <div class="empty-state">
+                        <p>Start speaking to begin the interpretation. Both participants' messages will appear here with real-time translations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const languages = {
+            spanish: { name: 'Spanish', flag: '🇪🇸', langCode: 'es-ES' },
+            french: { name: 'French', flag: '🇫🇷', langCode: 'fr-FR' },
+            german: { name: 'German', flag: '🇩🇪', langCode: 'de-DE' }
+        };
+
+        let currentLanguage = 'spanish';
+        let englishRecognition = null;
+        let foreignRecognition = null;
+        let isEnglishRecording = false;
+        let isForeignRecording = false;
+        let transcriptMessages = [];
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        function initSpeechRecognition() {
+            const langCode = languages[currentLanguage].langCode;
+            
+            englishRecognition = new SpeechRecognition();
+            englishRecognition.lang = 'en-US';
+            englishRecognition.continuous = false;
+            englishRecognition.interimResults = true;
+
+            englishRecognition.onstart = () => {
+                isEnglishRecording = true;
+                updateEnglishUI('listening');
+            };
+
+            englishRecognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                if (event.results[event.results.length - 1].isFinal) {
+                    processEnglishInput(transcript);
+                }
+            };
+
+            englishRecognition.onend = () => {
+                isEnglishRecording = false;
+                updateEnglishUI('ready');
+            };
+
+            foreignRecognition = new SpeechRecognition();
+            foreignRecognition.lang = langCode;
+            foreignRecognition.continuous = false;
+            foreignRecognition.interimResults = true;
+
+            foreignRecognition.onstart = () => {
+                isForeignRecording = true;
+                updateForeignUI('listening');
+            };
+
+            foreignRecognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                if (event.results[event.results.length - 1].isFinal) {
+                    processForeignInput(transcript);
+                }
+            };
+
+            foreignRecognition.onend = () => {
+                isForeignRecording = false;
+                updateForeignUI('ready');
+            };
+        }
+
+        function changeLanguagePair() {
+            const select = document.getElementById('languageSelect');
+            const newLang = select.value;
+            
+            if (isEnglishRecording) englishRecognition.stop();
+            if (isForeignRecording) foreignRecognition.stop();
+            
+            document.getElementById('transcriptList').innerHTML = `
+                <div class="empty-state">
+                    <p>Start speaking to begin the interpretation. Both participants' messages will appear here with real-time translations.</p>
+                </div>
+            `;
+            transcriptMessages = [];
+            
+            currentLanguage = newLang;
+            updateLanguageUI();
+            initSpeechRecognition();
+        }
+
+        function updateLanguageUI() {
+            const lang = languages[currentLanguage];
+            document.getElementById('foreignFlag').textContent = lang.flag;
+            document.getElementById('foreignSpeaker').textContent = lang.name + ' Speaker';
+            document.getElementById('foreignBadge').textContent = lang.name;
+            document.getElementById('foreignLabel').textContent = 'Speak ' + lang.name;
+            document.getElementById('foreignLangName').textContent = lang.name;
+        }
+
+        function toggleEnglish() {
+            if (isEnglishRecording) {
+                englishRecognition.stop();
+            } else {
+                englishRecognition.start();
+            }
+        }
+
+        function toggleForeign() {
+            if (isForeignRecording) {
+                foreignRecognition.stop();
+            } else {
+                foreignRecognition.start();
+            }
+        }
+
+        function updateEnglishUI(state) {
+            const btn = document.getElementById('englishBtn');
+            const status = document.getElementById('englishStatus');
+            const label = document.getElementById('englishLabel');
+
+            if (state === 'listening') {
+                btn.classList.add('recording');
+                status.textContent = 'Listening...';
+                status.className = 'status-badge listening';
+                status.style.display = 'inline-block';
+                label.textContent = 'Stop Recording';
+            } else if (state === 'processing') {
+                status.textContent = 'Claude translating...';
+                status.className = 'status-badge processing';
+                status.style.display = 'inline-block';
+                label.textContent = 'Processing';
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('recording');
+                status.style.display = 'none';
+                label.textContent = 'Speak English';
+                btn.disabled = false;
+            }
+        }
+
+        function updateForeignUI(state) {
+            const btn = document.getElementById('foreignBtn');
+            const status = document.getElementById('foreignStatus');
+            const label = document.getElementById('foreignLabel');
+            const langName = languages[currentLanguage].name;
+
+            if (state === 'listening') {
+                btn.classList.add('recording');
+                status.textContent = 'Listening...';
+                status.className = 'status-badge listening';
+                status.style.display = 'inline-block';
+                label.textContent = 'Stop Recording';
+            } else if (state === 'processing') {
+                status.textContent = 'Claude translating...';
+                status.className = 'status-badge processing';
+                status.style.display = 'inline-block';
+                label.textContent = 'Processing';
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('recording');
+                status.style.display = 'none';
+                label.textContent = 'Speak ' + langName;
+                btn.disabled = false;
+            }
+        }
+
+        async function processEnglishInput(transcript) {
+            if (!transcript.trim()) return;
+            const langName = languages[currentLanguage].name;
+            const langCode = languages[currentLanguage].langCode;
+
+            addMessage('English Speaker', transcript, 'english');
+            updateForeignUI('processing');
+            
+            try {
+                const translation = await translateWithClaude(transcript, 'English', langName);
+                addMessage(langName + ' Speaker', translation, 'spanish');
+                speakText(translation, langCode);
+            } catch (error) {
+                addMessage('System', `Error: ${error.message}`, 'english');
+                console.error('Translation error:', error);
+            } finally {
+                updateForeignUI('ready');
+            }
+        }
+
+        async function processForeignInput(transcript) {
+            if (!transcript.trim()) return;
+            const langName = languages[currentLanguage].name;
+
+            addMessage(langName + ' Speaker', transcript, 'spanish');
+            updateEnglishUI('processing');
+            
+            try {
+                const translation = await translateWithClaude(transcript, langName, 'English');
+                addMessage('English Speaker', translation, 'english');
+                speakText(translation, 'en-US');
+            } catch (error) {
+                addMessage('System', `Error: ${error.message}`, 'spanish');
+                console.error('Translation error:', error);
+            } finally {
+                updateEnglishUI('ready');
+            }
+        }
+
+        async function translateWithClaude(text, fromLang, toLang) {
+            const response = await fetch('/.netlify/functions/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    fromLang: fromLang,
+                    toLang: toLang
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Translation failed');
+            }
+
+            const data = await response.json();
+            return data.translation;
+        }
+
+        function addMessage(speaker, text, language) {
+            const transcriptList = document.getElementById('transcriptList');
+            
+            if (transcriptMessages.length === 0) {
+                transcriptList.innerHTML = '';
+            }
+
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${language}`;
+            messageEl.innerHTML = `
+                <div class="message-speaker">${escapeHtml(speaker)}</div>
+                <div class="message-text">${escapeHtml(text)}</div>
+            `;
+
+            transcriptList.appendChild(messageEl);
+            transcriptList.scrollTop = transcriptList.scrollHeight;
+            transcriptMessages.push({ speaker, text, language });
+        }
+
+        function speakText(text, lang) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        window.addEventListener('load', () => {
+            updateLanguageUI();
+            initSpeechRecognition();
+        });
+    </script>
+</body>
+</html>
